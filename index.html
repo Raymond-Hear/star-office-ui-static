@@ -48,37 +48,34 @@
             scene: { preload: preload, create: create, update: update }
         };
 
-        // 根据房间图调整的区域坐标
-        // 房间图：左上是书房（电脑桌），左下是客厅（沙发），右上是厨房，右下是阳台
+        // 区域坐标（根据你的房间图）
         const AREAS = {
-            study: { x: 180, y: 280, name: '书房' },      // 左上 - 电脑桌
-            livingroom: { x: 180, y: 480, name: '客厅' }, // 左下 - 沙发
-            kitchen: { x: 580, y: 280, name: '厨房' },    // 右上 - 厨房
-            balcony: { x: 650, y: 480, name: '阳台' }     // 右下 - 阳台
+            study: { x: 180, y: 280, name: '书房' },      // 左上
+            livingroom: { x: 180, y: 480, name: '客厅' }, // 左下
+            kitchen: { x: 580, y: 280, name: '厨房' },    // 右上
+            balcony: { x: 650, y: 480, name: '阳台' }     // 右下
         };
 
         const STATES = [
             { key: 'idle', name: '待命', area: 'livingroom' },
-            { key: 'writing', name: '整理文档', area: 'study' },
-            { key: 'researching', name: '搜索信息', area: 'study' },
-            { key: 'executing', name: '执行任务', area: 'study' },
-            { key: 'syncing', name: '同步备份', area: 'kitchen' },
-            { key: 'error', name: '出错了', area: 'livingroom' }
+            { key: 'working', name: '工作中', area: 'study' },
+            { key: 'researching', name: '查资料', area: 'study' },
+            { key: 'cooking', name: '做饭', area: 'kitchen' },
+            { key: 'relaxing', name: '休息', area: 'balcony' }
         ];
 
         const BUBBLE_TEXTS = {
-            idle: ['等聆风吩咐…', '有什么任务？', '休息一会儿', '随时待命'],
-            writing: ['这个要记下来', '整理资料中', '再检查一遍', '帮聆风写好'],
-            researching: ['让我搜一下', '找到线索了', '这个有意思', '再深挖一点'],
-            executing: ['冲鸭！', '这个简单', '马上搞定', '交给风崽吧'],
-            syncing: ['备份备份', '安全第一', '同步中…', '云端见'],
-            error: ['啊哦…', '出问题了', '让我看看', '马上修好']
+            idle: ['等聆风吩咐…', '随时待命', '休息一会儿'],
+            working: ['整理资料中', '帮聆风写好', '这个要记下来'],
+            researching: ['让我搜一下', '找到线索了', '这个有意思'],
+            cooking: ['做饭中', '准备晚餐', '煮点好吃的'],
+            relaxing: ['晒晒太阳', '放松一下', '看看风景']
         };
 
         let game, avatar, currentState = 'idle', statusText;
         let targetX = 180, targetY = 480;
-        let bubble = null, lastBubble = 0;
-        let lastBlink = 0;
+        let bubble = null, lastBubble = 0, lastStateChange = 0;
+        let stateIndex = 0;
 
         function preload() {
             this.load.image('home_bg', 'home_bg.jpg');
@@ -117,44 +114,39 @@
             
             statusText = document.getElementById('status-text');
             updateStatusText();
-            
-            // 初始气泡
             showBubble();
         }
 
-        function update(time) {
-            // 随机切换状态（模拟）
-            if (time % 10000 < 50) {
-                const randomState = STATES[Math.floor(Math.random() * STATES.length)];
-                currentState = randomState.key;
-                const area = AREAS[randomState.area];
+        function update(time, delta) {
+            // 每 5 秒切换一次状态
+            if (time - lastStateChange > 5000) {
+                stateIndex = (stateIndex + 1) % STATES.length;
+                const state = STATES[stateIndex];
+                currentState = state.key;
+                
+                const area = AREAS[state.area];
                 targetX = area.x + (Math.random() - 0.5) * 60;
                 targetY = area.y + (Math.random() - 0.5) * 40;
+                
                 updateStatusText();
+                lastStateChange = time;
             }
             
             // 移动
             const dx = targetX - avatar.x;
             const dy = targetY - avatar.y;
-            const speed = 1.5;
+            const speed = 2;
             
             if (Math.abs(dx) > 2) avatar.x += Math.sign(dx) * speed;
             if (Math.abs(dy) > 2) avatar.y += Math.sign(dy) * speed;
             
-            // 走动时的轻微上下摆动
+            // 走动时的轻微摆动
             if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-                avatar.y += Math.sin(time / 150) * 0.5;
+                avatar.y += Math.sin(time / 100) * 0.3;
             }
             
-            // 眨眼效果
-            if (time - lastBlink > 3000) {
-                avatar.setScaleY(0.05);
-                lastBlink = time;
-                setTimeout(() => avatar.setScaleY(0.4), 120);
-            }
-            
-            // 冒气泡
-            if (time - lastBubble > 6000) {
+            // 每 4 秒冒气泡
+            if (time - lastBubble > 4000) {
                 showBubble();
                 lastBubble = time;
             }
@@ -163,7 +155,7 @@
         function updateStatusText() {
             const state = STATES.find(s => s.key === currentState);
             const area = AREAS[state.area];
-            statusText.textContent = `[${state.name}] 在${area.name} - 风崽工作中`;
+            statusText.textContent = `风崽在${area.name} - ${state.name}`;
         }
 
         function showBubble() {
