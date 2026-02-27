@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star 的像素办公室</title>
+    <title>聆风的家 - 崽的状态</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -50,19 +50,19 @@
         };
 
         const STATES = {
-            idle: { name: '待命', area: 'breakroom' },
-            writing: { name: '整理文档', area: 'workdesk' },
-            researching: { name: '搜索信息', area: 'workdesk' },
-            executing: { name: '执行任务', area: 'workdesk' },
-            syncing: { name: '同步备份', area: 'breakroom' },
-            error: { name: '出错了', area: 'breakroom' }
+            idle: { name: '待命', area: 'livingroom' },
+            writing: { name: '整理文档', area: 'study' },
+            researching: { name: '搜索信息', area: 'study' },
+            executing: { name: '执行任务', area: 'study' },
+            syncing: { name: '同步备份', area: 'livingroom' },
+            error: { name: '出错了', area: 'livingroom' }
         };
 
         const BUBBLE_TEXTS = {
-            idle: ['摸鱼中…', '有没有新任务？', '咖啡真好喝', '伸个懒腰'],
-            writing: ['这个要记下来', '写得手酸', '再检查一遍', '好记性不如烂笔头'],
+            idle: ['等聆风吩咐…', '有什么任务？', '休息一会儿', '随时待命'],
+            writing: ['这个要记下来', '整理资料中', '再检查一遍', '帮聆风写好'],
             researching: ['让我搜一下', '找到线索了', '这个有意思', '再深挖一点'],
-            executing: ['冲鸭！', '这个简单', '加油加油', '马上搞定'],
+            executing: ['冲鸭！', '这个简单', '马上搞定', '交给崽吧'],
             syncing: ['备份备份', '安全第一', '同步中…', '云端见'],
             error: ['啊哦…', '出问题了', '让我看看', '马上修好']
         };
@@ -74,16 +74,18 @@
         const TYPEWRITER_DELAY = 50;
 
         function preload() {
-            this.load.image('office_bg', 'office_bg.png');
+            this.load.image('home_bg', 'home_bg.png');
+            this.load.image('avatar', 'avatar.png');
         }
 
         function create() {
             game = this;
-            this.add.image(400, 300, 'office_bg');
+            this.add.image(400, 300, 'home_bg');
             areas = {
-                workdesk: { x: 260, y: 340 },
-                breakroom: { x: 660, y: 170 },
-                alert: { x: 620, y: 490 }
+                study: { x: 200, y: 150 },
+                livingroom: { x: 600, y: 150 },
+                kitchen: { x: 200, y: 450 },
+                balcony: { x: 600, y: 450 }
             };
 
             // 创建 Star 角色（睁眼 + 闭眼两个纹理）
@@ -106,24 +108,23 @@
             graphicsClosed.fillRect(16, 14, 3, 1);
             graphicsClosed.generateTexture('star_closed', 24, 24);
 
-            star = game.physics.add.sprite(660, 170, 'star_open');
+            star = game.physics.add.sprite(600, 150, 'avatar');
             star.setOrigin(0.5);
             star.setScale(1.8);
             star.setAlpha(0.95);
 
-            // 加像素风小牌匾：海辛小龙虾的办公室
+            // 牌匾：聆风的家
             const plaqueBg = game.add.rectangle(400, 570, 380, 40, 0x5d4037);
             plaqueBg.setStrokeStyle(3, 0x3e2723);
-            const plaqueText = game.add.text(400, 570, '海辛小龙虾的办公室', {
-                font: '18px monospace',
+            const plaqueText = game.add.text(400, 570, '聆风的家', {
+                font: '20px monospace',
                 fill: '#ffd700',
                 fontWeight: 'bold',
                 stroke: '#000',
                 strokeThickness: 2
             }).setOrigin(0.5);
-            // 牌匾两边加个小装饰
-            game.add.text(230, 570, '⭐', { font: '20px' }).setOrigin(0.5);
-            game.add.text(570, 570, '⭐', { font: '20px' }).setOrigin(0.5);
+            game.add.text(230, 570, '🏠', { font: '20px' }).setOrigin(0.5);
+            game.add.text(570, 570, '✨', { font: '20px' }).setOrigin(0.5);
 
             statusText = document.getElementById('status-text');
             fetchStatus();
@@ -199,7 +200,7 @@
 
         function moveStar(time) {
             const stateInfo = STATES[currentState] || STATES.idle;
-            const baseTarget = areas[stateInfo.area] || areas.breakroom;
+            const baseTarget = areas[stateInfo.area] || areas.livingroom;
             if (Math.random() < 0.005) {
                 targetX = baseTarget.x + (Math.random() - 0.5) * 40;
                 targetY = baseTarget.y + (Math.random() - 0.5) * 40;
