@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>聆风的家 - 崽的状态</title>
+    <title>聆风的家 - 风崽的状态</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #1a1a2e;
+            background: #2d3748;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -35,7 +35,7 @@
 </head>
 <body>
     <div id="game-container"></div>
-    <div id="status-text">加载中...</div>
+    <div id="status-text">风崽准备就绪</div>
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script>
@@ -45,33 +45,40 @@
             height: 600,
             parent: 'game-container',
             pixelArt: true,
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
             scene: { preload: preload, create: create, update: update }
         };
 
-        const STATES = {
-            idle: { name: '待命', area: 'livingroom' },
-            writing: { name: '整理文档', area: 'study' },
-            researching: { name: '搜索信息', area: 'study' },
-            executing: { name: '执行任务', area: 'study' },
-            syncing: { name: '同步备份', area: 'livingroom' },
-            error: { name: '出错了', area: 'livingroom' }
+        // 根据房间图调整的区域坐标
+        // 房间图：左上是书房（电脑桌），左下是客厅（沙发），右上是厨房，右下是阳台
+        const AREAS = {
+            study: { x: 180, y: 280, name: '书房' },      // 左上 - 电脑桌
+            livingroom: { x: 180, y: 480, name: '客厅' }, // 左下 - 沙发
+            kitchen: { x: 580, y: 280, name: '厨房' },    // 右上 - 厨房
+            balcony: { x: 650, y: 480, name: '阳台' }     // 右下 - 阳台
         };
+
+        const STATES = [
+            { key: 'idle', name: '待命', area: 'livingroom' },
+            { key: 'writing', name: '整理文档', area: 'study' },
+            { key: 'researching', name: '搜索信息', area: 'study' },
+            { key: 'executing', name: '执行任务', area: 'study' },
+            { key: 'syncing', name: '同步备份', area: 'kitchen' },
+            { key: 'error', name: '出错了', area: 'livingroom' }
+        ];
 
         const BUBBLE_TEXTS = {
             idle: ['等聆风吩咐…', '有什么任务？', '休息一会儿', '随时待命'],
             writing: ['这个要记下来', '整理资料中', '再检查一遍', '帮聆风写好'],
             researching: ['让我搜一下', '找到线索了', '这个有意思', '再深挖一点'],
-            executing: ['冲鸭！', '这个简单', '马上搞定', '交给崽吧'],
+            executing: ['冲鸭！', '这个简单', '马上搞定', '交给风崽吧'],
             syncing: ['备份备份', '安全第一', '同步中…', '云端见'],
             error: ['啊哦…', '出问题了', '让我看看', '马上修好']
         };
 
-        let game, star, areas = {}, currentState = 'idle', statusText, lastFetch = 0, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0;
-        const FETCH_INTERVAL = 2000;
-        const BLINK_INTERVAL = 2500;
-        const BUBBLE_INTERVAL = 8000;
-        const TYPEWRITER_DELAY = 50;
+        let game, avatar, currentState = 'idle', statusText;
+        let targetX = 180, targetY = 480;
+        let bubble = null, lastBubble = 0;
+        let lastBlink = 0;
 
         function preload() {
             this.load.image('home_bg', 'home_bg.jpg');
@@ -80,132 +87,105 @@
 
         function create() {
             game = this;
+            
+            // 添加背景
             this.add.image(400, 300, 'home_bg');
-            areas = {
-                study: { x: 200, y: 150 },
-                livingroom: { x: 600, y: 150 },
-                kitchen: { x: 200, y: 450 },
-                balcony: { x: 600, y: 450 }
-            };
-
+            
             // 创建风崽角色
-            star = game.add.sprite(600, 150, 'avatar');
-            star.setOrigin(0.5);
-            star.setScale(0.6);
-
-            // 牌匾：聆风的家
-            const plaqueBg = game.add.rectangle(400, 570, 380, 40, 0x5d4037);
+            avatar = this.add.sprite(180, 480, 'avatar');
+            avatar.setOrigin(0.5);
+            avatar.setScale(0.4);
+            
+            // 牌匾
+            const plaqueBg = this.add.rectangle(400, 570, 300, 36, 0x5d4037);
             plaqueBg.setStrokeStyle(3, 0x3e2723);
-            const plaqueText = game.add.text(400, 570, '聆风的家', {
-                font: '20px monospace',
+            this.add.text(400, 570, '聆风的家', {
+                font: '18px monospace',
                 fill: '#ffd700',
-                fontWeight: 'bold',
-                stroke: '#000',
-                strokeThickness: 2
+                fontWeight: 'bold'
             }).setOrigin(0.5);
-            game.add.text(230, 570, '🏠', { font: '20px' }).setOrigin(0.5);
-            game.add.text(570, 570, '✨', { font: '20px' }).setOrigin(0.5);
-
+            
+            // 区域标签
+            Object.values(AREAS).forEach(area => {
+                this.add.text(area.x, area.y - 40, area.name, {
+                    font: '12px monospace',
+                    fill: '#fff',
+                    backgroundColor: '#000',
+                    padding: { x: 4, y: 2 }
+                }).setOrigin(0.5).setAlpha(0.7);
+            });
+            
             statusText = document.getElementById('status-text');
-            fetchStatus();
+            updateStatusText();
+            
+            // 初始气泡
+            showBubble();
         }
 
         function update(time) {
-            if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
-
-            // 眨眼效果（缩放模拟）
-            if (time - lastBlink > BLINK_INTERVAL) {
-                star.setScaleY(0.1);
-                lastBlink = time;
-                setTimeout(() => { star.setScaleY(0.6); }, 150);
+            // 随机切换状态（模拟）
+            if (time % 10000 < 50) {
+                const randomState = STATES[Math.floor(Math.random() * STATES.length)];
+                currentState = randomState.key;
+                const area = AREAS[randomState.area];
+                targetX = area.x + (Math.random() - 0.5) * 60;
+                targetY = area.y + (Math.random() - 0.5) * 40;
+                updateStatusText();
             }
-
+            
+            // 移动
+            const dx = targetX - avatar.x;
+            const dy = targetY - avatar.y;
+            const speed = 1.5;
+            
+            if (Math.abs(dx) > 2) avatar.x += Math.sign(dx) * speed;
+            if (Math.abs(dy) > 2) avatar.y += Math.sign(dy) * speed;
+            
+            // 走动时的轻微上下摆动
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                avatar.y += Math.sin(time / 150) * 0.5;
+            }
+            
+            // 眨眼效果
+            if (time - lastBlink > 3000) {
+                avatar.setScaleY(0.05);
+                lastBlink = time;
+                setTimeout(() => avatar.setScaleY(0.4), 120);
+            }
+            
             // 冒气泡
-            if (time - lastBubble > BUBBLE_INTERVAL) {
+            if (time - lastBubble > 6000) {
                 showBubble();
                 lastBubble = time;
             }
-
-            // 打字机效果
-            if (typewriterIndex < typewriterTarget.length && time - lastTypewriter > TYPEWRITER_DELAY) {
-                typewriterText += typewriterTarget[typewriterIndex];
-                statusText.textContent = typewriterText;
-                typewriterIndex++;
-                lastTypewriter = time;
-            }
-
-            // 移动 + 小踱步
-            moveStar(time);
         }
 
-        function normalizeState(s) {
-            if (!s) return 'idle';
-            if (s === 'working') return 'writing';
-            if (s === 'run' || s === 'running') return 'executing';
-            if (s === 'sync') return 'syncing';
-            if (s === 'research') return 'researching';
-            return s;
-        }
-
-        function fetchStatus() {
-            fetch('status')
-                .then(response => response.json())
-                .then(data => {
-                    const nextState = normalizeState(data.state);
-                    const stateInfo = STATES[nextState] || STATES.idle;
-                    const changed = nextState !== currentState;
-                    currentState = nextState;
-                    const nextLine = '[' + stateInfo.name + '] ' + (data.detail || '...');
-                    if (changed) {
-                        typewriterTarget = nextLine;
-                        typewriterText = '';
-                        typewriterIndex = 0;
-                        const targetArea = areas[stateInfo.area] || areas.breakroom;
-                        targetX = targetArea.x + (Math.random() - 0.5) * 40;
-                        targetY = targetArea.y + (Math.random() - 0.5) * 40;
-                    } else {
-                        if (!typewriterTarget || typewriterTarget !== nextLine) {
-                            typewriterTarget = nextLine;
-                            typewriterText = '';
-                            typewriterIndex = 0;
-                        }
-                    }
-                })
-                .catch(error => {
-                    typewriterTarget = '连接失败，正在重试...';
-                    typewriterText = '';
-                    typewriterIndex = 0;
-                });
-        }
-
-        function moveStar(time) {
-            const stateInfo = STATES[currentState] || STATES.idle;
-            const baseTarget = areas[stateInfo.area] || areas.livingroom;
-            if (Math.random() < 0.005) {
-                targetX = baseTarget.x + (Math.random() - 0.5) * 40;
-                targetY = baseTarget.y + (Math.random() - 0.5) * 40;
-            }
-            const dx = targetX - star.x;
-            const dy = targetY - star.y;
-            const speed = 1.2;
-            const wobble = Math.sin(time / 200) * 0.8;
-            if (Math.abs(dx) > 3) star.x += Math.sign(dx) * speed;
-            if (Math.abs(dy) > 3) star.y += Math.sign(dy) * speed;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-                star.setY(star.y + wobble);
-            }
+        function updateStatusText() {
+            const state = STATES.find(s => s.key === currentState);
+            const area = AREAS[state.area];
+            statusText.textContent = `[${state.name}] 在${area.name} - 风崽工作中`;
         }
 
         function showBubble() {
             if (bubble) { bubble.destroy(); bubble = null; }
+            
             const texts = BUBBLE_TEXTS[currentState] || BUBBLE_TEXTS.idle;
             const text = texts[Math.floor(Math.random() * texts.length)];
-            const bg = game.add.rectangle(star.x, star.y - 45, text.length * 10 + 20, 28, 0xffffff, 0.95);
+            
+            const bg = game.add.rectangle(avatar.x, avatar.y - 50, text.length * 12 + 16, 26, 0xffffff, 0.95);
             bg.setStrokeStyle(2, 0x000000);
-            const txt = game.add.text(star.x, star.y - 45, text, { font: '12px monospace', fill: '#000', align: 'center' }).setOrigin(0.5);
+            
+            const txt = game.add.text(avatar.x, avatar.y - 50, text, {
+                font: '12px monospace',
+                fill: '#000'
+            }).setOrigin(0.5);
+            
             bubble = game.add.container(0, 0, [bg, txt]);
             bubble.setDepth(100);
-            setTimeout(() => { if (bubble) { bubble.destroy(); bubble = null; } }, 3000);
+            
+            setTimeout(() => {
+                if (bubble) { bubble.destroy(); bubble = null; }
+            }, 2500);
         }
 
         new Phaser.Game(config);
